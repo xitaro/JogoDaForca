@@ -4,6 +4,6 @@ using UnityEngine;
 
 public class CategoryScript : MonoBehaviour
 {
-    public string[] words;
+    public List<string> words;
 
 }

@@ -7,13 +7,16 @@ using TMPro;
 
 public class GameManager : MonoBehaviour
 {
+    [Header("References")]
     [SerializeField] private SceneScript sceneScript;
     [SerializeField] private SavaData saveData;
     [SerializeField] private HighscoreTable highscoreTable;
+    [SerializeField] private Money money;
+    [SerializeField] private Toy toy;
 
     public TMP_InputField iField;
 
-    public CategoryScript[] categoryScripts;
+    public List<CategoryScript> categoryScripts;
     public CategoryScript currentCategory;
     public string word;
 
@@ -22,8 +25,10 @@ public class GameManager : MonoBehaviour
     private int scoreWord = 0;
     private int wordPoint = 100;
     private int letterPoint = 10;
-    private int discoveredLetters = 0;
+    public int discoveredLetters = 0;
+    public int hits;
     public int chances;
+    public int partToDisable;
     [SerializeField] private int startChances;
 
     public bool isWordComplete = false;
@@ -37,7 +42,6 @@ public class GameManager : MonoBehaviour
     public Text wrongLettersUI;
 
     public GameObject letterUI;
-
     public GameObject gamePanel;
     public GameObject menuPanel;
     public GameObject wordPanel;
@@ -57,6 +61,7 @@ public class GameManager : MonoBehaviour
         chances = startChances;
         //get the score
         scoreTotal = 0;
+        partToDisable = 0;
         //scoreTotal = PlayerPrefs.GetInt("Score");
         //scoreUI.text = scoreTotal.ToString();
     }
@@ -87,11 +92,10 @@ public class GameManager : MonoBehaviour
             }
         }
     }
-
-    // Start is called before the first frame update
     public void StartGame()
     {
         SelectCategory();
+       
     }
 
     //funcão que seleciona a categoria
@@ -100,27 +104,34 @@ public class GameManager : MonoBehaviour
         //pra cada categoria nas categorias
         foreach (CategoryScript category in categoryScripts)
         {
-            //verifica se o nome do botao clicado corresponde à categoria
-            if (EventSystem.current.currentSelectedGameObject.name == category.name && category.name != "Aleatorio")
-            {
-                currentCategory = category;
-               
-            }
-            else if (EventSystem.current.currentSelectedGameObject.name == "Aleatorio")
+
+            if (EventSystem.current.currentSelectedGameObject.name == "Aleatorio")
             {
                 int random = Random.Range(0, 3);
                 currentCategory = categoryScripts[random];
+                //enable the game panel
+                gamePanel.SetActive(true);
+                //disable the menu panel
+                menuPanel.SetActive(false);
+                //inicializa a primeira palavra
+                UpdateWord();
+                FullfillList();
+                break;
             }
-            //enable the game panel
-            gamePanel.SetActive(true);
-            //disable the menu panel
-            menuPanel.SetActive(false);
-            //inicializa a primeira palavra
-            UpdateWord();
-            FullfillList();
-            break;
+            else if (EventSystem.current.currentSelectedGameObject.name == category.name)
+            {
+                print("entrou aqui");
+                currentCategory = category;
+                //enable the game panel
+                gamePanel.SetActive(true);
+                //disable the menu panel
+                menuPanel.SetActive(false);
+                //inicializa a primeira palavra
+                UpdateWord();
+                FullfillList();
+                break;
+            }
         }
-
     }
 
     public void UpdateWord()
@@ -130,7 +141,7 @@ public class GameManager : MonoBehaviour
         //clear the letter list <Text>
         ClearList();
         // if the index is less than the words saved on the category
-        if (index < currentCategory.words.Length)
+        if (index < currentCategory.words.Count)
         {
             //give's word a value
             word = currentCategory.words[index].ToUpper();
@@ -151,7 +162,8 @@ public class GameManager : MonoBehaviour
         //foreach letter in the word panel
         foreach (Transform child in wordPanel.transform)
         {
-            Destroy(child.gameObject);
+           Destroy(child.gameObject);
+            
         }
     }
 
@@ -192,7 +204,7 @@ public class GameManager : MonoBehaviour
         letter = letter.ToUpper();
         if (word.Contains(letter) && !correctLetters.Contains(letter))
         {
-            print("entrou aqui");
+            print("entrouqui");
             //update the text on the screen
             //for each letter in the word
             for (int i = 0; i < word.Length; i++)
@@ -202,6 +214,8 @@ public class GameManager : MonoBehaviour
                 {
                     letters[i].text = letter.ToString();
                     discoveredLetters += 1;
+                    hits += 1;
+                    VerifyHits();
                 }
             }
             //add to the list of correct letters
@@ -227,10 +241,13 @@ public class GameManager : MonoBehaviour
                 }
                 else
                 {
+                    print("destroi uma parte");
                     //reduces the chances in one
                     chances--;
                     wrongLetters.Add(letter);
                     wrongLettersUI.text = wrongLettersUI.text + letter;
+                    toy.DisablePart(partToDisable);
+                    partToDisable++;
                 }
             }
             //if the list is empty
@@ -240,6 +257,8 @@ public class GameManager : MonoBehaviour
                 chances--;
                 wrongLetters.Add(letter);
                 wrongLettersUI.text = wrongLettersUI.text + letter;
+                toy.DisablePart(partToDisable);
+                partToDisable++;
             }
         }
 
@@ -269,7 +288,7 @@ public class GameManager : MonoBehaviour
             //reset the discovered letters
             discoveredLetters = 0;
 
-            if (index != currentCategory.words.Length)
+            if (index != currentCategory.words.Count)
             {
                 //reset the discovered letters
                 correctLetters.Clear();
@@ -277,6 +296,10 @@ public class GameManager : MonoBehaviour
                 wrongLettersUI.text = "";
                 //update word
                 UpdateWord();
+                //Enable the Toy
+                toy.EnableToy();
+                //reset the parts
+                partToDisable = 0;
                 //activate the button to the next word
                 nextWordButton.SetActive(true);
             }
@@ -320,6 +343,15 @@ public class GameManager : MonoBehaviour
         //saves the score
             saveData.SaveScore(scoreTotal);
         Debug.Log("Somou pontos da letra");
+    }
+
+    public void VerifyHits()
+    {
+        if (hits == 3)
+        {
+            money.SetMoney(1);
+            hits = 0;
+        }
     }
 
     public void DisablePanel(GameObject panelOrButton)
